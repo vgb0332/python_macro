@@ -10,6 +10,7 @@ from win32api import GetSystemMetrics
 
 from time import sleep
 import threading
+import multiprocessing
 
 from getRGBColor import rgbint2rgbtuple
 form_class = uic.loadUiType("main_ui.ui")[0]
@@ -17,10 +18,11 @@ form_class = uic.loadUiType("main_ui.ui")[0]
 class MyWindow(QMainWindow, form_class):
     def __init__(self):
         super().__init__()
-        self.isOn = False
-        self.history = [];
-        self.cursorPos = None
-        self.cursorColor = None
+        self.isTest = False
+        self.isReal = False
+        self.history = []
+        self.cursorPos = self.getCurCursorPos()
+        self.cursorColor = self.getCurCursorColor()
         self.curWindowSizeX = GetSystemMetrics(0)
         self.curWindowSizeY = GetSystemMetrics(1)
         self.setupUi(self)
@@ -34,42 +36,73 @@ class MyWindow(QMainWindow, form_class):
         self.startBtn.clicked.connect(self.startBtnClicked)
         self.endBtn.clicked.connect(self.endBtnClicked)
         self.stopBtn.clicked.connect(self.stopBtnClicked)
-        self.testBtn.clicked.connect(self.testBtnClicked)
-    def testBtnClicked(self) :
-        print('testing!')
-        # print(str(self.cursorPos))
-        # x, y = self.cursorPos
-        # print(str(self.cursorColor))
-        # win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN,x,y,0,0)
-        # win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP,x,y,0,0)
-        # win32api.SetCursorPos((500,500))
+        # self.testBtn.clicked.connect(self.testBtnClicked)
+        self.testBtn2.clicked.connect(self.startBtnClicked)
+    def getCurCursorPos(self) :
+        self.cursorPos = win32api.GetCursorPos()
+        return self.cursorPos
 
-        done = False
-        xPos = 0
-        yPos = 0
-        print('starting xPos: {}, yPos: {}'.format(xPos, yPos))
-        print('windowSize x: {}, y : {}'.format(self.curWindowSizeX, self.curWindowSizeY))
-        while xPos < self.curWindowSizeX:
-            print(xPos)
-            win32api.SetCursorPos((xPos,yPos))
-            win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN,xPos,yPos,0,0)
-            win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP,xPos,yPos,0,0)
-            xPos = xPos + 10
+    def getCurCursorColor(self) :
+        mouse_p = win32api.GetCursorPos()
+        i_desktop_window_id = win32gui.GetDesktopWindow()
+        i_desktop_window_dc = win32gui.GetWindowDC(i_desktop_window_id)
+        color = win32gui.GetPixel(i_desktop_window_dc, mouse_p[0] , mouse_p[1])
+        rgb = (color & 0xff), ((color >> 8) & 0xff), ((color >> 16) & 0xff)
+        self.cursorColor = rgb
+        return rgb
 
-            sleep(0.5)
+    def getColor(self, xPos, yPos) :
+        i_desktop_window_id = win32gui.GetDesktopWindow()
+        i_desktop_window_dc = win32gui.GetWindowDC(i_desktop_window_id)
+        color = win32gui.GetPixel(i_desktop_window_dc, int(xPos) , int(yPos))
+        rgb = (color & 0xff), ((color >> 8) & 0xff), ((color >> 16) & 0xff)
+        self.cursorColor = rgb
+        return rgb
 
-        # while yPos < self.curWindowSizeY:
-        #     win32api.SetCursorPos((xPos,yPos))
-        #     yPos = yPos + 10
-        #     sleep(1)
-        print('done')
+    def mouseRightClick(xPos, yPos) :
+        win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN,xPos,yPos,0,0)
+        win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP,xPos,yPos,0,0)
         return
 
-    def startBtnClicked(self):
-        if self.isOn:
+    def mouseLeftClick(xPos, yPos) :
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,xPos,yPos,0,0)
+        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,xPos,yPos,0,0)
+        return
+
+    def updateStatus(self) :
+        self.mouseXPos.setText(str(self.cursorPos[0]))
+        self.mouseYPos.setText(str(self.cursorPos[1]))
+        self.cursorColorCode.setText(str(self.cursorColor))
+        self.cursorColorCode.setStyleSheet("color:" + str(self.cursorColor))
+        self.cursorColorBox.setStyleSheet("background-color:" + "rgb" + str(self.cursorColor))
+        return
+
+    def startBtnClicked(self) :
+        if self.isReal:
+            print('already started')
+            return
+        self.isReal = True
+        print('testing!')
+
+        colorDetector = threading.Thread( target=self.detectColorChange2 )
+        colorDetector.start()
+
+
+    def detectColorChange2(self) :
+        xPos = int(self.curWindowSizeX / 2);
+        yPos = int(self.curWindowSizeY*2  / 3);
+        win32api.SetCursorPos((xPos,yPos))
+        while self.isReal :
+            color = self.getColor(xPos, yPos)
+            self.console.setText(str(self.cursorColor))
+            sleep(0.1)
+        return
+
+    def testBtnClicked(self):
+        if self.isTest:
             print('already started..')
             return
-        self.isOn = True
+        self.isTest = True
         self.console.setText('작동중...')
 
         cursorTracker = threading.Thread( target=self.trackCursorPos )
@@ -79,33 +112,31 @@ class MyWindow(QMainWindow, form_class):
         colorTracker.start()
 
     def endBtnClicked(self):
-        self.isOn = False
+        self.isTest = False
+        self.isReal = False
+        sys.exit()
         QCoreApplication.quit()
 
     def stopBtnClicked(self) :
-        self.isOn = False
+        print('중지')
+        self.isTest = False
+        self.isReal = False
         self.console.setText('중지됨')
 
     def trackCursorCol(self) :
-        while self.isOn:
-            mouse_p = win32api.GetCursorPos()
-            #get mouse curor color
-            color = win32gui.GetPixel(win32gui.GetDC(win32gui.GetActiveWindow()), mouse_p[0] , mouse_p[1])
-            rgb = rgbint2rgbtuple(color)
-            self.cursorColorCode.setText(str(rgb))
-            self.cursorColorCode.setStyleSheet("color:" + str(rgb))
-            self.cursorColorBox.setStyleSheet("background-color:" + "rgb" + str(rgb))
-            self.cursorColor = rgb
+        while self.isTest:
+            color = self.getCurCursorColor()
+            sleep(0.05)
+            self.updateStatus()
             sleep(0.05)
         return
 
     def trackCursorPos(self):
-        while self.isOn:
+        while self.isTest:
             # get mouse cursor position
-            mouse_p = win32api.GetCursorPos()
-            self.mouseXPos.setText(str(mouse_p[0]))
-            self.mouseYPos.setText(str(mouse_p[1]))
-            self.cursorPos = mouse_p
+            mouse_p = self.getCurCursorPos()
+            sleep(0.05)
+            self.updateStatus()
             sleep(0.05)
         return
 
