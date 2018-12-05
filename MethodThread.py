@@ -39,25 +39,33 @@ class FishingThread(QThread):
             if not self._status:
                 self.cond.wait(self.mutex)
 
-            i_desktop_window_id = win32gui.GetDesktopWindow()
-            i_desktop_window_dc = win32gui.GetWindowDC(i_desktop_window_id)
-            color = win32gui.GetPixel(i_desktop_window_dc, xPos , yPos)
-            rgb = (color & 0xff), ((color >> 8) & 0xff), ((color >> 16) & 0xff)
-            self.mouseColorCode.emit(str(rgb))
-            self.mouseColorBox.emit("background-color:"+"rgb"+str(rgb))
+            self.color = self.getColor( xPos, yPos )
+            print('inital color' + str(self.color))
+            self.message.emit('inital color' + str(self.color))
+            while True :
+                if not self._status:
+                    break
 
-            print(rgb, self.color, rgb == self.color)
-            if not rgb == self.color and self.color:
-                print('?')
-                self.press('g','r','e','a','t')
-                self.msleep(5000)
-                self.press('e')
-                self.off()
+                rgb = self.getColor( xPos, yPos )
+                self.mouseColorCode.emit(str(rgb))
+                self.mouseColorBox.emit("background-color:"+"rgb"+str(rgb))
 
-            self.color = rgb
+                if not rgb == self.color:
+                    print('gotcha')
+                    self.message.emit('색 변화 감지, 낚아올려부려!')
+                    self.press('g')
+                    self.msleep(5000)
+                    self.message.emit('재시작')
+
             self.msleep(100)  # ※주의 QThread에서 제공하는 sleep을 사용
 
             self.mutex.unlock()
+    def getColor(self, xPos, yPos) :
+        i_desktop_window_id = win32gui.GetDesktopWindow()
+        i_desktop_window_dc = win32gui.GetWindowDC(i_desktop_window_id)
+        color = win32gui.GetPixel(i_desktop_window_dc, xPos , yPos)
+        rgb = (color & 0xff), ((color >> 8) & 0xff), ((color >> 16) & 0xff)
+        return rgb
 
     def press(self, *args):
         '''
