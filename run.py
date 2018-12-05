@@ -11,9 +11,12 @@ from time import sleep
 import threading
 import multiprocessing
 from CursorThread import CursorThread
-from MethodThread import FishingThread
+from MethodThread import FishingThread, GatheringThread
 from getRGBColor import rgbint2rgbtuple
-form_class = uic.loadUiType("main_ui.ui")[0]
+import os
+cwd = os.getcwd()
+print('cwd', cwd)
+form_class = uic.loadUiType( cwd + "/main_ui.ui")[0]
 
 class MyWindow(QMainWindow, form_class):
     def __init__(self):
@@ -23,9 +26,13 @@ class MyWindow(QMainWindow, form_class):
 
         self.cursorThread = CursorThread()
         self.fishingThread = FishingThread()
+        self.gatheringThread = GatheringThread()
         self.setupUi(self)
         self.windowX.setText( str(GetSystemMetrics(0)) )
         self.windowY.setText( str(GetSystemMetrics(1)) )
+        self.move(GetSystemMetrics(0) - 500, GetSystemMetrics(1) - 700)
+
+        self.fishingRadioButton.setChecked(True)
 
         self.startBtn.clicked.connect(self.startBtnClicked)
         self.testBtn.clicked.connect(self.testBtnClicked)
@@ -49,14 +56,17 @@ class MyWindow(QMainWindow, form_class):
         self.fishingThread.start()
         #
 
+        #
+        # self.gatheringThread.message.connect(self.updateConsole)
+        # self.gatheringThread.start()
+        #
+
     def endBtnClicked(self):
         QCoreApplication.quit()
 
     @pyqtSlot(str)
     def updateConsole(self, message) :
         curMessage = self.consoleText.toPlainText()
-        print(curMessage)
-        print(message)
         self.consoleText.setText( curMessage + '\n' + message)
 
     @pyqtSlot()
@@ -74,8 +84,8 @@ class MyWindow(QMainWindow, form_class):
             if self.fishingThread.status :
                 self.fishingThread.off()
 
-            # if self.gatheringThead.status:
-            #     self.gatheringThread.off()
+            if self.gatheringThread.status:
+                self.gatheringThread.off()
             self.startBtn.setText('시작')
             self.running = False
         else :
@@ -89,8 +99,9 @@ class MyWindow(QMainWindow, form_class):
             if isFishing :
                 self.fishingThread.on()
 
-            # if isGathering:
-            #     self.gatheringThead.on()
+            if isGathering:
+                self.gatheringThread.on()
+
             self.startBtn.setText('중지')
             self.running = True
 

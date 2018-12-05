@@ -41,7 +41,8 @@ class CursorThread(QThread):
             rgb = (color & 0xff), ((color >> 8) & 0xff), ((color >> 16) & 0xff)
             self.mouseColorCode.emit(str(rgb))
             self.mouseColorBox.emit("background-color:"+"rgb"+str(rgb))
-            self.msleep(100)  # ※주의 QThread에서 제공하는 sleep을 사용
+            self.message.emit('inital color' + str(rgb))
+            self.msleep(500)  # ※주의 QThread에서 제공하는 sleep을 사용
 
             self.mutex.unlock()
 
