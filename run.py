@@ -7,138 +7,103 @@ from PyQt5 import uic
 import win32api, win32con, win32gui
 from win32api import GetSystemMetrics
 
-
 from time import sleep
 import threading
 import multiprocessing
-
+from CursorThread import CursorThread
+from MethodThread import FishingThread
 from getRGBColor import rgbint2rgbtuple
 form_class = uic.loadUiType("main_ui.ui")[0]
 
 class MyWindow(QMainWindow, form_class):
     def __init__(self):
         super().__init__()
-        self.isTest = False
-        self.isReal = False
-        self.history = []
-        self.cursorPos = self.getCurCursorPos()
-        self.cursorColor = self.getCurCursorColor()
-        self.curWindowSizeX = GetSystemMetrics(0)
-        self.curWindowSizeY = GetSystemMetrics(1)
-        self.setupUi(self)
+        self.activeMethod = None
+        self.running = False
 
-        # check for current window size
-        # print("Width =", GetSystemMetrics(0))
-        # print("Height =", GetSystemMetrics(1))
+        self.cursorThread = CursorThread()
+        self.fishingThread = FishingThread()
+        self.setupUi(self)
         self.windowX.setText( str(GetSystemMetrics(0)) )
         self.windowY.setText( str(GetSystemMetrics(1)) )
 
         self.startBtn.clicked.connect(self.startBtnClicked)
+        self.testBtn.clicked.connect(self.testBtnClicked)
         self.endBtn.clicked.connect(self.endBtnClicked)
-        self.stopBtn.clicked.connect(self.stopBtnClicked)
-        # self.testBtn.clicked.connect(self.testBtnClicked)
-        self.testBtn2.clicked.connect(self.startBtnClicked)
-    def getCurCursorPos(self) :
-        self.cursorPos = win32api.GetCursorPos()
-        return self.cursorPos
 
-    def getCurCursorColor(self) :
-        mouse_p = win32api.GetCursorPos()
-        i_desktop_window_id = win32gui.GetDesktopWindow()
-        i_desktop_window_dc = win32gui.GetWindowDC(i_desktop_window_id)
-        color = win32gui.GetPixel(i_desktop_window_dc, mouse_p[0] , mouse_p[1])
-        rgb = (color & 0xff), ((color >> 8) & 0xff), ((color >> 16) & 0xff)
-        self.cursorColor = rgb
-        return rgb
+        #
+        self.cursorThread.mouseXPos.connect(self.mouseXPos.setText)
+        self.cursorThread.mouseYPos.connect(self.mouseYPos.setText)
+        self.cursorThread.mouseColorCode.connect(self.cursorColorCode.setText)
+        self.cursorThread.mouseColorBox.connect(self.cursorColorBox.setStyleSheet)
+        self.cursorThread.message.connect(self.updateConsole)
+        self.cursorThread.start()
+        #
 
-    def getColor(self, xPos, yPos) :
-        i_desktop_window_id = win32gui.GetDesktopWindow()
-        i_desktop_window_dc = win32gui.GetWindowDC(i_desktop_window_id)
-        color = win32gui.GetPixel(i_desktop_window_dc, int(xPos) , int(yPos))
-        rgb = (color & 0xff), ((color >> 8) & 0xff), ((color >> 16) & 0xff)
-        self.cursorColor = rgb
-        return rgb
-
-    def mouseRightClick(xPos, yPos) :
-        win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTDOWN,xPos,yPos,0,0)
-        win32api.mouse_event(win32con.MOUSEEVENTF_RIGHTUP,xPos,yPos,0,0)
-        return
-
-    def mouseLeftClick(xPos, yPos) :
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN,xPos,yPos,0,0)
-        win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP,xPos,yPos,0,0)
-        return
-
-    def updateStatus(self) :
-        self.mouseXPos.setText(str(self.cursorPos[0]))
-        self.mouseYPos.setText(str(self.cursorPos[1]))
-        self.cursorColorCode.setText(str(self.cursorColor))
-        self.cursorColorCode.setStyleSheet("color:" + str(self.cursorColor))
-        self.cursorColorBox.setStyleSheet("background-color:" + "rgb" + str(self.cursorColor))
-        return
-
-    def startBtnClicked(self) :
-        if self.isReal:
-            print('already started')
-            return
-        self.isReal = True
-        print('testing!')
-
-        colorDetector = threading.Thread( target=self.detectColorChange2 )
-        colorDetector.start()
-
-
-    def detectColorChange2(self) :
-        xPos = int(self.curWindowSizeX / 2);
-        yPos = int(self.curWindowSizeY*2  / 3);
-        win32api.SetCursorPos((xPos,yPos))
-        while self.isReal :
-            color = self.getColor(xPos, yPos)
-            self.console.setText(str(self.cursorColor))
-            sleep(0.1)
-        return
-
-    def testBtnClicked(self):
-        if self.isTest:
-            print('already started..')
-            return
-        self.isTest = True
-        self.console.setText('작동중...')
-
-        cursorTracker = threading.Thread( target=self.trackCursorPos )
-        cursorTracker.start()
-
-        colorTracker = threading.Thread( target=self.trackCursorCol )
-        colorTracker.start()
+        #
+        self.fishingThread.mouseXPos.connect(self.mouseXPos.setText)
+        self.fishingThread.mouseYPos.connect(self.mouseYPos.setText)
+        self.fishingThread.mouseColorCode.connect(self.cursorColorCode.setText)
+        self.fishingThread.mouseColorBox.connect(self.cursorColorBox.setStyleSheet)
+        self.fishingThread.message.connect(self.updateConsole)
+        self.fishingThread.start()
+        #
 
     def endBtnClicked(self):
-        self.isTest = False
-        self.isReal = False
-        sys.exit()
         QCoreApplication.quit()
 
-    def stopBtnClicked(self) :
-        print('중지')
-        self.isTest = False
-        self.isReal = False
-        self.console.setText('중지됨')
+    @pyqtSlot(str)
+    def updateConsole(self, message) :
+        curMessage = self.consoleText.toPlainText()
+        print(curMessage)
+        print(message)
+        self.consoleText.setText( curMessage + '\n' + message)
 
-    def trackCursorCol(self) :
-        while self.isTest:
-            color = self.getCurCursorColor()
-            sleep(0.05)
-            self.updateStatus()
-            sleep(0.05)
-        return
+    @pyqtSlot()
+    def testBtnClicked(self) :
+        if self.cursorThread.status:
+            self.testBtn.setText('테스트')
+        else :
+            self.testBtn.setText('테스트 중지')
 
-    def trackCursorPos(self):
-        while self.isTest:
-            # get mouse cursor position
-            mouse_p = self.getCurCursorPos()
-            sleep(0.05)
-            self.updateStatus()
-            sleep(0.05)
-        return
+        self.cursorThread.toggle_status()
+
+    @pyqtSlot()
+    def startBtnClicked(self) :
+        if self.running :
+            if self.fishingThread.status :
+                self.fishingThread.off()
+
+            # if self.gatheringThead.status:
+            #     self.gatheringThread.off()
+            self.startBtn.setText('시작')
+            self.running = False
+        else :
+            isFishing = self.fishingRadioButton.isChecked()
+            isGathering = self.gatheringRadioButton.isChecked()
+
+            if not isFishing and not isGathering :
+                self.showAlertMessage( '뭐할건지 선택해', '알림', '채집이냐 낚시냐...')
+                return
+
+            if isFishing :
+                self.fishingThread.on()
+
+            # if isGathering:
+            #     self.gatheringThead.on()
+            self.startBtn.setText('중지')
+            self.running = True
+
+
+    def showAlertMessage( self, message, title, additional ) :
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Information)
+
+        msg.setText(message)
+        msg.setWindowTitle(title)
+        msg.setDetailedText(additional)
+        msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        msg.exec_()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

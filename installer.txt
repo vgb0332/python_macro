@@ -1,3 +1,4 @@
-1. python ¼³Ä¡
+1. python ï¿½ï¿½Ä¡
 2. py -m pip install PyQt5
-3. Qt designer ¼³Ä¡
+3. pip install pypiwin32
+4. pip install pyqt5-tools

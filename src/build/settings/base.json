@@ -1,6 +1,0 @@
-{
-    "app_name": "MyApp",
-    "main_module": "src/main/python/main.py",
-    "author": "Mjung",
-    "version": "0.0.1"
-}
