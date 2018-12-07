@@ -25,8 +25,10 @@ class FishingThread(QThread):
         self._status = False
         self.color = None
         self.firstTime = False
-        self.hotKey = keyboard.add_hotkey('ctrl+q', self.quit, args=[self])
-        self.startKey = keyboard.add_hotkey('f5', self.active, args=[self])
+        self.hotKey = keyboard.add_hotkey('f5', self.quit, args=[self])
+        self.startKey = keyboard.add_hotkey('f6', self.active, args=[self])
+        self.i_desktop_window_id = win32gui.GetDesktopWindow()
+        self.i_desktop_window_dc = win32gui.GetWindowDC(self.i_desktop_window_id)
 
     def __del__(self):
         self.wait()
@@ -39,6 +41,7 @@ class FishingThread(QThread):
         self.off()
 
     def run(self):
+        print('starting')
         xPos = int(GetSystemMetrics(0) / 2)
         yPos = int(GetSystemMetrics(1)*6  / 7)
         # yPos = int(GetSystemMetrics(1) / 2)
@@ -46,10 +49,11 @@ class FishingThread(QThread):
         self.mouseYPos.emit(str(yPos))
 
         while True:
+            print('starting')
             self.mutex.lock()
             if not self._status:
                 self.cond.wait(self.mutex)
-
+            print('starting')
             # if(self.firstTime) :
             #     win32api.SetCursorPos((xPos,yPos))
             #     self.right_click(xPos, yPos)
@@ -84,9 +88,7 @@ class FishingThread(QThread):
 
             self.mutex.unlock()
     def getColor(self, xPos, yPos) :
-        i_desktop_window_id = win32gui.GetDesktopWindow()
-        i_desktop_window_dc = win32gui.GetWindowDC(i_desktop_window_id)
-        color = win32gui.GetPixel(i_desktop_window_dc, xPos , yPos)
+        color = win32gui.GetPixel(self.i_desktop_window_dc, xPos , yPos)
         rgb = (color & 0xff), ((color >> 8) & 0xff), ((color >> 16) & 0xff)
         return rgb
 
