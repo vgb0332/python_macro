@@ -21,6 +21,8 @@ class CursorThread(QThread):
         self.cond = QWaitCondition()
         self.mutex = QMutex()
         self._status = False
+        self.i_desktop_window_id = win32gui.GetDesktopWindow()
+        self.i_desktop_window_dc = win32gui.GetWindowDC(self.i_desktop_window_id)
 
     def __del__(self):
         self.wait()
@@ -35,9 +37,7 @@ class CursorThread(QThread):
             self.mouseXPos.emit(str(xPos))
             self.mouseYPos.emit(str(yPos))
 
-            i_desktop_window_id = win32gui.GetDesktopWindow()
-            i_desktop_window_dc = win32gui.GetWindowDC(i_desktop_window_id)
-            color = win32gui.GetPixel(i_desktop_window_dc, xPos , yPos)
+            color = win32gui.GetPixel(self.i_desktop_window_dc, xPos , yPos)
             rgb = (color & 0xff), ((color >> 8) & 0xff), ((color >> 16) & 0xff)
             self.mouseColorCode.emit(str(rgb))
             self.mouseColorBox.emit("background-color:"+"rgb"+str(rgb))

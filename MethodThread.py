@@ -34,26 +34,26 @@ class FishingThread(QThread):
         self.wait()
 
     def active(self, message) :
-        print('lets getit')
+        print('F6')
         self.on()
 
     def quit(self, message) :
+        print('F5')
         self.off()
 
     def run(self):
-        print('starting')
+        print('method thread running')
         xPos = int(GetSystemMetrics(0) / 2)
         yPos = int(GetSystemMetrics(1)*6  / 7)
         # yPos = int(GetSystemMetrics(1) / 2)
         self.mouseXPos.emit(str(xPos))
         self.mouseYPos.emit(str(yPos))
-
+        win32api.SetCursorPos((xPos,yPos))
+        print(self._status)
         while True:
-            print('starting')
             self.mutex.lock()
             if not self._status:
                 self.cond.wait(self.mutex)
-            print('starting')
             # if(self.firstTime) :
             #     win32api.SetCursorPos((xPos,yPos))
             #     self.right_click(xPos, yPos)
@@ -61,6 +61,7 @@ class FishingThread(QThread):
             #     self.press('b')
             #     self.firstTime = False
             # print('restart')
+            print('hereR?')
             self.msleep(1000)
             self.press('w')
             self.msleep(5000)
@@ -73,12 +74,11 @@ class FishingThread(QThread):
                     rgb = self.getColor( xPos, yPos )
                     self.mouseColorCode.emit(str(rgb))
                     self.mouseColorBox.emit("background-color:"+"rgb"+str(rgb))
-                    if rgb[0] == 255:
-                        print('gotcha')
+                    if rgb[0] > 200:
+                        print('catch')
                         self.message.emit('색 변화 감지, 낚아올려부려!' + str(rgb))
                         self.press('w')
                         self.msleep(5000)
-                        print('done')
                         break
                 except :
                     print('hmmm why?')
@@ -93,10 +93,6 @@ class FishingThread(QThread):
         return rgb
 
     def press(self, *args):
-        '''
-        one press, one release.
-        accepts as many arguments as you want. e.g. press('left_arrow', 'a','b').
-        '''
         for i in args:
             win32api.keybd_event(VK_CODE[i], 0,0,0)
             self.msleep(50)

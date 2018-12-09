@@ -44,7 +44,7 @@ class MyWindow(QMainWindow, form_class):
         self.cursorThread.mouseColorCode.connect(self.cursorColorCode.setText)
         self.cursorThread.mouseColorBox.connect(self.cursorColorBox.setStyleSheet)
         self.cursorThread.message.connect(self.updateConsole)
-        # self.cursorThread.start()
+        self.cursorThread.start()
         #
 
         #
